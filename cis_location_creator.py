@@ -5,15 +5,18 @@
 '''
 CHANGELOG:
 
+1.1.1 - Fixed the issue that inputting data for making the entry would overwrite the first entry
+
 1.1 - Added more internal documentation
-      Fixed an issue where an image wouldn't display on the first open'''
+      Fixed an issue where an image wouldn't display on the first open
+      Changed how the GUI handled stretching'''
 
 from PIL import Image
 import json
 import tkinter as tk
 import tkinter.ttk as ttk
 
-VERSION_NUMBER = 1.1
+VERSION_NUMBER = 1.1.1
 
 
 class Application(tk.Tk):
@@ -157,7 +160,9 @@ class Application(tk.Tk):
                 display_location_image()
 
                 _update_connections_menus()
-                
+
+            except IndexError:
+                print('No data currently exists.')
             except KeyError:
                 pass
 
@@ -170,7 +175,7 @@ class Application(tk.Tk):
         def save_location():
             '''Updates a location within the program's internal database.'''
             try:
-                curLocation = self._data[locationListBox.get(self._lastIndex)]
+                curLocation = self._data[locationCurrentIdLabel['text']]
                 curLocation['img'] = locationImgInput.get()
                 curLocation['description'] = locationLongDescription.get('0.0', tk.END)
                 curLocation['shortDescription'] = locationShortDescription.get('0.0', tk.END)
