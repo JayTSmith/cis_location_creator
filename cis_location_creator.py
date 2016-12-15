@@ -5,7 +5,10 @@
 '''
 CHANGELOG:
 
-1.1.1 - Fixed the issue that inputting data for making the entry would overwrite the first entry
+1.2 - Fixed the bug where the connections wouldn't be saved in the data file.
+      A location will now display its neighbors when selected.
+
+1.1.1 - Fixed an issue where typing information into the location on loadup would overwrite information in the first location
 
 1.1 - Added more internal documentation
       Fixed an issue where an image wouldn't display on the first open
@@ -16,7 +19,7 @@ import json
 import tkinter as tk
 import tkinter.ttk as ttk
 
-VERSION_NUMBER = 1.1.1
+VERSION_NUMBER = '1.1.1'
 
 
 class Application(tk.Tk):
@@ -40,7 +43,7 @@ class Application(tk.Tk):
         '''Creates the widgets used by the program and sets them up for use in the
            proper functions and such.'''
 
-        selected_neighbors = {'n':tk.StringVar(),
+        selectedNeighbors = {'n':tk.StringVar(),
                               'e':tk.StringVar(),
                               'w':tk.StringVar(),
                               's':tk.StringVar(),
@@ -67,10 +70,10 @@ class Application(tk.Tk):
                             (locationDownInput, 'd'))
 
             for menu in optionMenus:
-                menu[0]['menu'].add_command(label='', command=tk._setit(selected_neighbors[menu[1]],
+                menu[0]['menu'].add_command(label='', command=tk._setit(selectedNeighbors[menu[1]],
                                                                         ''))
-                for connection in locationListBox.get(0, tk.END):
-                    menu[0]['menu'].add_command(label=connection, command=tk._setit(selected_neighbors[menu[1]],
+                for connection in sorted(locationListBox.get(0, tk.END)):
+                    menu[0]['menu'].add_command(label=connection, command=tk._setit(selectedNeighbors[menu[1]],
                                                                                  connection))
 
         def add_location():
@@ -81,7 +84,7 @@ class Application(tk.Tk):
             newLocation = {idNumber: {'img': '',
                                       'connections':{'n':'',
                                                      'e':'',
-                                                     'W':'',
+                                                     'w':'',
                                                      's':'',
                                                      'u':'',
                                                      'd':''},
@@ -144,7 +147,7 @@ class Application(tk.Tk):
                 locationDungeonSpinner.delete(0, tk.END)
 
                 # Reset the connections
-                for var in selected_neighbors.values():
+                for var in selectedNeighbors.values():
                     var.set('')
 
                 # Insert the location's data into the Entry
@@ -156,6 +159,9 @@ class Application(tk.Tk):
                 locationMonsterSpinner.insert(0, curLocation['monsterChance'])
                 locationRandomTreasureSpinner.insert(0, curLocation['randomTreasureChance'])
                 locationDungeonSpinner.insert(0, curLocation['dungeonChance'])
+
+                for connection in curLocation['connections'].keys():
+                    selectedNeighbors[connection].set(curLocation['connections'][connection])
 
                 display_location_image()
 
@@ -177,12 +183,23 @@ class Application(tk.Tk):
             try:
                 curLocation = self._data[locationCurrentIdLabel['text']]
                 curLocation['img'] = locationImgInput.get()
-                curLocation['description'] = locationLongDescription.get('0.0', tk.END)
-                curLocation['shortDescription'] = locationShortDescription.get('0.0', tk.END)
+                curLocation['description'] = locationLongDescription.get('0.0', tk.END).strip()
+                curLocation['shortDescription'] = locationShortDescription.get('0.0', tk.END).strip()
                 curLocation['terrain'] = locationTerrainInput.get()
                 curLocation['monsterChance'] = locationMonsterSpinner.get()
                 curLocation['randomTreasureChance'] = locationRandomTreasureSpinner.get()
                 curLocation['dungeonChance'] = locationDungeonSpinner.get()
+
+                optionMenus = ( (locationNorthInput, 'n'),
+                            (locationEastInput, 'e'),
+                            (locationWestInput, 'w'),
+                            (locationSouthInput, 's'),
+                            (locationUpInput, 'u'),
+                            (locationDownInput, 'd'))
+
+                for optionMenu in optionMenus:
+                    curLocation['connections'][optionMenu[1]] = selectedNeighbors[optionMenu[1]].get()
+                    
             except KeyError:
                 print('No data currently exists.')
             
@@ -210,8 +227,10 @@ class Application(tk.Tk):
 
             # Empties the listbox of the program and repopulate it with the entries in the datafile.
             locationListBox.delete(0, tk.END)
-            for key in self._data.keys():
+            for key in sorted(self._data.keys()):
                 locationListBox.insert(tk.END, key)
+
+            _update_connections_menus()
 
         # Creates the menubar
         menubar = tk.Menu(self)
@@ -250,36 +269,36 @@ class Application(tk.Tk):
 
         # The following widgets are used to control the current locations data
         # entiries that are usually the second word in the identifer.
-        locationIdLabel = tk.Label(rightSideFrame, text='ID: ')
+        locationIdLabel = tk.Label(rightSideFrame, text='ID: ', anchor=tk.W)
         locationIdLabel.grid(row=0, column=0, sticky=tk.N+tk.E+tk.W+tk.S)
         locationCurrentIdLabel = tk.Label(rightSideFrame, text='')
         locationCurrentIdLabel.configure(relief=tk.RIDGE)
         locationCurrentIdLabel.grid(row=0, column=1, columnspan=2, sticky=tk.N+tk.E+tk.W+tk.S)
 
-        locationImgLabel = tk.Label(rightSideFrame, text='Image source: ')
+        locationImgLabel = tk.Label(rightSideFrame, text='Image source: ', anchor=tk.W)
         locationImgLabel.grid(row=1, column=0, sticky=tk.N+tk.E+tk.W+tk.S)
         locationImgInput = tk.Entry(rightSideFrame)
         locationImgInput.grid(row=1, column=1, sticky=tk.N+tk.E+tk.W+tk.S)
         locationBrowseButton = tk.Button(rightSideFrame, text='Browse', command=browse_location_image)
         locationBrowseButton.grid(row=1, column=2, sticky=tk.N+tk.E+tk.W+tk.S)
 
-        locationTerrainLabel = tk.Label(rightSideFrame, text='Terrain: ')
+        locationTerrainLabel = tk.Label(rightSideFrame, text='Terrain: ', anchor=tk.W)
         locationTerrainLabel.grid(row=2, column=0, sticky=tk.N+tk.E+tk.W+tk.S)
         locationTerrainInput = tk.Entry(rightSideFrame)
         locationTerrainInput.grid(row=2, column=1, columnspan=2, sticky=tk.N+tk.E+tk.W+tk.S)
 
-        locationMonsterLabel = tk.Label(rightSideFrame, text='Monster Chance: ')
-        locationMonsterLabel.grid(row=3, column=0)
+        locationMonsterLabel = tk.Label(rightSideFrame, text='Monster Chance: ', anchor=tk.W)
+        locationMonsterLabel.grid(row=3, column=0, sticky=tk.N+tk.E+tk.W+tk.S)
         locationMonsterSpinner = tk.Spinbox(rightSideFrame, to=100, from_=0)
         locationMonsterSpinner.grid(row=3, column=1, columnspan=2, sticky=tk.E+tk.W)
 
-        locationRandomTreasureLabel = tk.Label(rightSideFrame, text='Random Treasure Chance: ')
-        locationRandomTreasureLabel.grid(row=4, column=0)
+        locationRandomTreasureLabel = tk.Label(rightSideFrame, text='Random Treasure Chance: ', anchor=tk.W)
+        locationRandomTreasureLabel.grid(row=4, column=0, sticky=tk.N+tk.E+tk.W+tk.S)
         locationRandomTreasureSpinner = tk.Spinbox(rightSideFrame, to=100, from_=0)
         locationRandomTreasureSpinner.grid(row=4, column=1, columnspan=2, sticky=tk.E+tk.W)
 
-        locationDungeonLabel = tk.Label(rightSideFrame, text='Dungeon Chance: ')
-        locationDungeonLabel.grid(row=5, column=0)
+        locationDungeonLabel = tk.Label(rightSideFrame, text='Dungeon Chance: ', anchor=tk.W)
+        locationDungeonLabel.grid(row=5, column=0, sticky=tk.N+tk.E+tk.W+tk.S)
         locationDungeonSpinner = tk.Spinbox(rightSideFrame, to=100, from_=0)
         locationDungeonSpinner.grid(row=5, column=1, columnspan=2, sticky=tk.E+tk.W)
 
@@ -302,43 +321,39 @@ class Application(tk.Tk):
         locationDetailsNotebook.add(locationShortDescription, text='Short Description')
         
         locationConnectionFrame = tk.Frame(locationDetailsNotebook)
-        locationConnectionFrame.columnconfigure(0, weight=1)
         locationConnectionFrame.columnconfigure(1, weight=1)
-        # Configure every row to space out evenly
-        for i in range(6):
-            locationConnectionFrame.rowconfigure(i, weight=1)
         locationConnectionFrame.grid()
 
         # Creates the labels and dropdowns that tell the current connections to other locations
         locationNorthLabel = tk.Label(locationConnectionFrame, text='North: ')
-        locationNorthLabel.grid(row=0, column=0)
-        locationNorthInput = tk.OptionMenu(locationConnectionFrame, selected_neighbors['n'], [])
-        locationNorthInput.grid(row=0, column=1)
+        locationNorthLabel.grid(row=0, column=0, sticky=tk.E)
+        locationNorthInput = tk.OptionMenu(locationConnectionFrame, selectedNeighbors['n'], [])
+        locationNorthInput.grid(row=0, column=1, sticky=tk.E + tk.W)
 
         locationSouthLabel = tk.Label(locationConnectionFrame, text='South: ')
-        locationSouthLabel.grid(row=1, column=0)
-        locationSouthInput = tk.OptionMenu(locationConnectionFrame, selected_neighbors['s'], [])
-        locationSouthInput.grid(row=1, column=1)
+        locationSouthLabel.grid(row=1, column=0, sticky=tk.E)
+        locationSouthInput = tk.OptionMenu(locationConnectionFrame, selectedNeighbors['s'], [])
+        locationSouthInput.grid(row=1, column=1, sticky=tk.E + tk.W)
 
         locationEastLabel = tk.Label(locationConnectionFrame, text='East: ')
-        locationEastLabel.grid(row=2, column=0)
-        locationEastInput = tk.OptionMenu(locationConnectionFrame, selected_neighbors['e'], [])
-        locationEastInput.grid(row=2, column=1)
+        locationEastLabel.grid(row=2, column=0, sticky=tk.E)
+        locationEastInput = tk.OptionMenu(locationConnectionFrame, selectedNeighbors['e'], [])
+        locationEastInput.grid(row=2, column=1, sticky=tk.E + tk.W)
 
         locationWestLabel = tk.Label(locationConnectionFrame, text='West: ')
-        locationWestLabel.grid(row=3, column=0)
-        locationWestInput = tk.OptionMenu(locationConnectionFrame, selected_neighbors['w'], [])
-        locationWestInput.grid(row=3, column=1)
+        locationWestLabel.grid(row=3, column=0, sticky=tk.E)
+        locationWestInput = tk.OptionMenu(locationConnectionFrame, selectedNeighbors['w'], [])
+        locationWestInput.grid(row=3, column=1, sticky=tk.E + tk.W)
 
         locationUpLabel = tk.Label(locationConnectionFrame, text='Up: ')
-        locationUpLabel.grid(row=4, column=0)
-        locationUpInput = tk.OptionMenu(locationConnectionFrame,selected_neighbors['u'], [])
-        locationUpInput.grid(row=4, column=1)
+        locationUpLabel.grid(row=4, column=0, sticky=tk.E)
+        locationUpInput = tk.OptionMenu(locationConnectionFrame,selectedNeighbors['u'], [])
+        locationUpInput.grid(row=4, column=1, sticky=tk.E + tk.W)
 
         locationDownLabel = tk.Label(locationConnectionFrame, text='Down: ')
-        locationDownLabel.grid(row=5, column=0)
-        locationDownInput = tk.OptionMenu(locationConnectionFrame, selected_neighbors['d'], [])
-        locationDownInput.grid(row=5, column=1)
+        locationDownLabel.grid(row=5, column=0, sticky=tk.E)
+        locationDownInput = tk.OptionMenu(locationConnectionFrame, selectedNeighbors['d'], [])
+        locationDownInput.grid(row=5, column=1, sticky=tk.E + tk.W)
         
         locationDetailsNotebook.add(locationConnectionFrame, text='Connections')
 
@@ -358,5 +373,5 @@ class Application(tk.Tk):
 
 if __name__ == '__main__':
     app = Application()
-    app.geometry('500x600')
+    app.geometry('500x500+90+90')
     app.mainloop()
